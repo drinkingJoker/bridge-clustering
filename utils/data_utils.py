@@ -4,6 +4,7 @@ Version      : V1.0
 Date         : 2025-01-10 14:33:28
 Description  : 
 '''
+from pathlib import Path
 from scipy.io import arff
 # import arff
 import pandas as pd
@@ -67,12 +68,33 @@ def read_arff(file):
         klass = 'CLASS'
     elif 'Class' in df.columns:
         klass = 'Class'
+    assert klass in df.columns and not klass is None
     # 将分类数据转换为整数编码
     df[klass] = pd.factorize(df[klass])[0]
 
     cols = [x for x in df.columns if x != klass]
-    X = df[cols].values
-    y = df[klass].values
+    # 确保 X 中的所有元素都是数值类型 (float 或 int)
+    X = df[cols].apply(pd.to_numeric, errors='coerce').values
+    # 处理可能的 NaN 值，例如用均值填充
+    X = np.nan_to_num(X, nan=np.nanmean(X))
+    # X = df[cols].values
+    labels = df[klass].values
+    return X, labels
+
+
+def read_dataset(fullpath):
+    if isinstance(fullpath, str):
+        fullpath = Path(fullpath)
+    if fullpath.suffix == '.csv':
+        df = pd.read_csv(fullpath, sep=',')
+        X, y = df[['0', '1']], df['label'].to_numpy()
+    elif fullpath.suffix == '.arff':
+        X, y = read_arff(fullpath)
+    elif fullpath.suffix == '.txt':
+        df = pd.read_csv(fullpath, delim_whitespace=True, header=None)
+        X, y = df[[0, 1]], df[2].to_numpy()
+    else:
+        raise ValueError(f'invalid path {fullpath}')
     return X, y
 
 
