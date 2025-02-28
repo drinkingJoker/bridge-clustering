@@ -128,11 +128,16 @@ def plotWithTSNE(filename, X, cluster_labels, predicted_labels):
     return fig
 
 
+'''
+1 选择数据集
+2 选择是否生成性能指标的csv文件 =》 选择指标
+3 展示图片还是直接生成
+'''
 if __name__ == '__main__':
     data_folder = './data/datasets/'
     artificial_folder = 'synthetic/'
     real_world_folder = 'real-world/'
-    select_folder = real_world_folder  # f1. 选择数据集
+    select_folder = artificial_folder  # f1. 选择数据集
     folder = data_folder + select_folder
 
     save_path = './result/'
@@ -178,8 +183,8 @@ if __name__ == '__main__':
             cluster_fig = plotWithTSNE(filename, X, cluster_labels,
                                        predicted_labels)
 
-        # cluster_savepath = f'{clusters_savepath}{filename}.png'
-        # cluster_fig.savefig(cluster_savepath, **plot_config)
+        cluster_savepath = f'{clusters_savepath}{filename}.png'
+        cluster_fig.savefig(cluster_savepath, **plot_config)
 
     if update_performance == True:
         write_performance_csv(performance_df, performance_path)

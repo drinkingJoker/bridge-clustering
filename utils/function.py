@@ -2,6 +2,7 @@ from collections import defaultdict
 import heapq
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
+import time
 
 
 def remove_self(distances, indices):
@@ -53,127 +54,192 @@ def determine_bridges(labels, local_indices):
     return bridges
 
 
+# def expand_labels(local_indices, is_bridge_candidate):
+#     print('expand_labels:')
+#     start_time = time.time()  # 记录开始时间
+
+#     n_points = local_indices.shape[0]
+#     cluster_labels = np.ones(n_points) * -1  # 初始化所有标签为-1
+
+#     label = 0
+#     for i in range(n_points):
+#         if is_bridge_candidate[i] or cluster_labels[i] != -1:
+#             continue
+
+#         pq = [i]
+#         while pq:
+#             el = pq.pop()
+#             if cluster_labels[el] == -1:  # 只有未标记的元素才需要处理
+#                 cluster_labels[el] = label
+
+#                 # 查找当前元素的所有邻居（排除桥接候选点）
+#                 neighbors = local_indices[el]
+
+#                 for neighbor in neighbors:
+#                     if not is_bridge_candidate[neighbor] and cluster_labels[
+#                             neighbor] == -1:
+#                         pq.append(neighbor)
+
+
+#         label += 1
+#     # 检查是否所有的非桥点已分配标签
+#     non_bridges_unlabeled = np.any((cluster_labels == -1)
+#                                    & (~is_bridge_candidate))
+#     if non_bridges_unlabeled:
+#         print("存在未分配标签的非桥接点。")
+#     else:
+#         print("所有非桥接点均已成功分配标签。")
+#     end_time = time.time()  # 记录结束时间
+#     execution_time = end_time - start_time
+#     print(f"函数执行时间: {execution_time} 秒")
+#     return cluster_labels
 def expand_labels(local_indices, is_bridge_candidate):
+    print('expand_labels:')
+    start_time = time.time()
     n_points = local_indices.shape[0]
-    cluster_labels = np.ones(n_points) * -1
-    bridge_indexes = np.arange(n_points)[is_bridge_candidate]
-    x_axis = np.arange(n_points)[..., np.newaxis]
+    cluster_labels = np.full(n_points, -1, dtype=int)
 
-    jump_matrix = np.zeros((n_points, n_points), dtype=bool)
-
-    assert ((local_indices == x_axis) == False).all()  # 保证没有自连接
-
-    jump_matrix[x_axis, local_indices] = True
-    jump_matrix[x_axis, bridge_indexes] = False
-
-    transposed_jump_matrix = jump_matrix.T
-    jump_matrix = jump_matrix | transposed_jump_matrix
-    # 确保 jump_matrix 中的每个位置 (i, j) 和 (j, i) 都至少有一个是 True，从而使得 jump_matrix 成为一个对称矩阵。
-
-    jump_matrix[is_bridge_candidate, :] = False
-    jump_matrix[:, is_bridge_candidate] = False
-
-    assert (
-        np.diag(jump_matrix) == False).all()  # 确保 jump_matrix 的对角线元素全部为 False
-    # check_jump_matrix(jump_matrix, local_indices, is_bridge_candidate)
-
-    index_line = np.arange(n_points)
-
-    label = 0
+    # 构建邻接表
+    adj_list = defaultdict(list)
     for i in range(n_points):
         if is_bridge_candidate[i]:
-            continue
-        if cluster_labels[i] != -1:
-            continue
-        pq = [i]
+            continue  # 桥接点不参与连通性计算
+        for neighbor in local_indices[i]:
+            if not is_bridge_candidate[neighbor] and neighbor != i:
+                adj_list[i].append(neighbor)
+                adj_list[neighbor].append(i)  # 确保双向连接
 
-        while pq:
-            el = pq.pop()
+    # 进行连通分量标记
+    label = 0
+    visited = np.zeros(n_points, dtype=bool)
+
+    def dfs(node):
+        stack = [node]
+        while stack:
+            el = stack.pop()
+            if visited[el]:
+                continue
+            visited[el] = True
             cluster_labels[el] = label
-            elements_to_explore = index_line[jump_matrix[el] &
-                                             (cluster_labels == -1)].tolist()
-            pq.extend(elements_to_explore)
+            stack.extend(adj_list[el])  # 继续遍历邻接点
 
+    for i in range(n_points):
+        if is_bridge_candidate[i] or visited[i]:
+            continue
+        dfs(i)
         label += 1
-
+    non_bridges_unlabeled = np.any(
+        np.logical_and(cluster_labels == -1, ~is_bridge_candidate))
+    if non_bridges_unlabeled:
+        print("存在未分配标签的非桥点。.............................")
+    else:
+        print("所有非桥点均已成功分配标签。")
+    end_time = time.time()  # 记录结束时间
+    execution_time = end_time - start_time
+    print(f"函数执行时间: {execution_time} 秒")
     return cluster_labels
 
 
-def generate_jump_distance_matrix(local_distances, local_indices):
-    npoints = local_indices.shape[0]
-    jump_matrix = np.zeros((npoints, npoints), dtype=float)
+'''
+expand_labels
+关键改动点：
+移除了 jump_matrix：不再创建一个可能非常大的二维布尔矩阵来存储点与点之间的连接信息。
+直接遍历 local_indices：对于每个待处理的点，我们直接检查它的邻居（即 local_indices 中指定的点），并根据这些信息更新聚类标签。
+考虑了桥接候选点的影响：在更新聚类标签时，跳过了所有被标记为桥接候选点的点，确保它们不会影响聚类过程。
+这种方法大大减少了内存使用，特别是在处理大规模数据集时更为明显。不过需要注意的是，这种优化依赖于 local_indices 的结构以及如何定义邻居关系，确保你的应用场景中可以直接应用这种简化方式。如果 local_indices 包含了复杂的邻接关系或者需要额外的逻辑来确定哪些点是“邻居”，你可能还需要进一步调整此代码。
+'''
 
-    index_array = np.arange(npoints, dtype=int)
-    jump_matrix[index_array[..., np.newaxis],
-                local_indices[np.newaxis, ...]] = local_distances
 
-    mask = jump_matrix == 0
-    transposed_jump_matrix = jump_matrix.T
-    jump_matrix = jump_matrix + transposed_jump_matrix * mask
+def generate_adjacency_list(local_distances, local_indices):
+    """ 使用邻接表存储点的连接关系，避免 O(n²) 的跳转矩阵 """
+    n_points = local_indices.shape[0]
+    adj_list = defaultdict(list)
 
-    assert (jump_matrix == jump_matrix.T).all()
-    return jump_matrix
+    for i in range(n_points):
+        for j, dist in zip(local_indices[i], local_distances[i]):
+            if i != j:  # 避免自环
+                adj_list[i].append((dist, j))  # (距离, 目标点)
+                adj_list[j].append((dist, i))  # 确保双向连接
+
+    return adj_list
 
 
 def assign_bridge_labels(cluster_labels, local_indices, local_distances):
+    """ 采用最小堆 + 邻接表优化 bridge label 计算，并处理未覆盖情况 """
+    print('assign_bridge_labels:')
+    start_time = time.time()
+    adj_list = generate_adjacency_list(local_distances, local_indices)
 
-    def _collect_data(jump_matrix, is_bridge_candidate, index):
-        not_ignore = jump_matrix > 0
-        is_bridge_candidate = is_bridge_candidate & not_ignore
-        not_bridge_candidate = (~is_bridge_candidate) & not_ignore
-        neigh_indexes = np.arange(is_bridge_candidate.size, dtype=int)
-        index_list = np.ones_like(neigh_indexes) * index
-
-        assert (cluster_labels[neigh_indexes[is_bridge_candidate]] == -1).all()
-        assert (cluster_labels[neigh_indexes[not_bridge_candidate]]
-                != -1).all()
-
-        assert (jump_matrix[not_bridge_candidate] > 0).all()
-        assert (jump_matrix[is_bridge_candidate] > 0).all()
-
-        valid_queue = list(
-            zip(jump_matrix[not_bridge_candidate],
-                neigh_indexes[not_bridge_candidate], index_list))
-        invalid_queue = list(
-            zip(jump_matrix[is_bridge_candidate],
-                neigh_indexes[is_bridge_candidate], index_list))
-
-        return valid_queue, invalid_queue
-
-    index_array = np.arange(cluster_labels.size)
+    n_points = cluster_labels.size
     is_bridge_candidate = cluster_labels == -1
-    missing_indexes = index_array[is_bridge_candidate]
-    jump_distance_matrix = generate_jump_distance_matrix(
-        local_distances, local_indices)
-    # verify_jump_distance_matrix(local_distances, local_indices, jump_distance_matrix)
+    missing_indexes = np.where(is_bridge_candidate)[0]
 
+    # 优先队列 (min-heap)
     pq = []
-    pq2 = defaultdict(list)
+    # 存储未分配点的邻居信息
+    pending_entries = defaultdict(list)
+
+    # 初始化优先队列
     for i in missing_indexes:
-        jump_row = jump_distance_matrix[i]
+        for dist, neigh in adj_list[i]:
+            if cluster_labels[neigh] != -1:
+                heapq.heappush(pq, (dist, neigh, i))
+            else:
+                # 记录未标记邻居的边，等待邻居被处理时处理
+                pending_entries[neigh].append((dist, i))
 
-        valid_queue, invalid_queue = _collect_data(jump_row,
-                                                   is_bridge_candidate, i)
-        for t in invalid_queue:
-            pq2[t[1]].append(t)
-
-        pq.extend(valid_queue)
-
-    heapq.heapify(pq)
-
+    # 处理桥接点
     while pq:
-        t = heapq.heappop(pq)
-        neigh, me = int(t[1]), int(t[2])
-        if cluster_labels[me] != -1:
-            continue
-        assert cluster_labels[neigh] != -1
+        dist, src, cur = heapq.heappop(pq)
 
-        cluster_labels[me] = cluster_labels[neigh]
-        to_add = list(filter(lambda x: cluster_labels[x[2]] == -1, pq2[me]))
-        heapq.heapify(to_add)
+        if cluster_labels[cur] != -1:
+            continue  # 已处理
 
-        pq = list(heapq.merge(pq, to_add))
+        cluster_labels[cur] = cluster_labels[src]
+
+        # 处理当前点未处理的边
+        if cur in pending_entries:
+            for pending_dist, pending_cur in pending_entries[cur]:
+                if cluster_labels[pending_cur] == -1:
+                    heapq.heappush(pq, (pending_dist, cur, pending_cur))
+            del pending_entries[cur]  # 移除已处理
+
+    # 二次检查未分配的点（处理环形依赖）
+    remaining_missing = np.where(cluster_labels == -1)[0]
+    for i in remaining_missing:
+        min_dist = float('inf')
+        best_label = -1
+        for dist, neigh in adj_list[i]:
+            if cluster_labels[neigh] != -1 and dist < min_dist:
+                min_dist = dist
+                best_label = cluster_labels[neigh]
+        if best_label != -1:
+            cluster_labels[i] = best_label
+        else:
+            # 极端情况：所有邻居均为桥接点，强制标记（需处理）
+            # 此处可选择报错或赋予默认标签（根据需求调整）
+            cluster_labels[i] = 0  # 示例：标记为第一个簇
+            print(f"警告: 点 {i} 无有效邻居，强制分配标签")
+
+    # 最终检查
+    unlabeled = np.where(cluster_labels == -1)[0]
+    if unlabeled.size > 0:
+        print(f"存在未分配标签的点：{unlabeled.tolist()}")
+    else:
+        print("所有点均已成功分配标签。")
+
+    print(f"函数执行时间: {time.time() - start_time} 秒")
     return cluster_labels
+
+
+'''
+assign_bridge_labels
+关键改动点
+移除了对完整跳转矩阵的依赖：我们不再试图创建和操作一个巨大的二维数组来表示所有点之间的关系。
+采用了优先队列：通过优先队列（heapq）按距离从小到大处理每个未标记点与其邻居的关系，从而动态地扩展聚类标签。
+优化了内存使用：通过直接处理每个点的局部信息（即其邻居的距离和索引），而不是预计算所有可能的连接，大大降低了内存消耗。
+这种方法特别适合处理大规模数据集，因为它仅在需要时计算必要的距离，并且以增量方式更新聚类标签。
+'''
 
 
 def compute_cluster_labels(X,
@@ -187,9 +253,12 @@ def compute_cluster_labels(X,
     if local_indices is None:
         local_distances, local_indices = compute_neighbors(X, k)
     assert is_bridge_candidate.dtype == 'bool'
+
     pred_labels = expand_labels(local_indices, is_bridge_candidate)
+
     pred_labels = assign_bridge_labels(pred_labels, local_indices,
                                        local_distances)
+
     return pred_labels
 
 

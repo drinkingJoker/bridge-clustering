@@ -4,12 +4,24 @@ Version      : V1.0
 Date         : 2025-01-10 14:33:28
 Description  : 
 '''
+import os
+import sys
+
+from PIL import Image
+from sklearn.preprocessing import StandardScaler
+
+cur_dir = os.path.dirname(__file__)
+parent_dir = os.path.dirname(cur_dir)
+sys.path.append(parent_dir)
+
 from pathlib import Path
 from scipy.io import arff
 # import arff
 import pandas as pd
 import numpy as np
 from sklearn.datasets import make_blobs
+
+import cv2
 
 
 def generate_data():
@@ -98,9 +110,69 @@ def read_dataset(fullpath):
     return X, y
 
 
-if __name__ == '__main__':
+def arff_test():
     fileDir = './data/datasets/'
     artificialDir = fileDir + 'artificial/'
 
     data = artificialDir + '2d-3c-no123.arff'
     Load_arff(data)
+
+
+def create_feature_vectors(image):
+    """
+    将图像转换为特征向量矩阵。
+    每个像素点转换为一个5维向量：(R,G,B,x,y)
+    """
+    # 获取图像尺寸
+    height, width = image.shape[:2]
+
+    # 创建坐标网格
+    y_coords, x_coords = np.mgrid[0:height, 0:width]
+
+    # 重塑图像和坐标数组
+    pixels = image.reshape(-1, 3)  # 将图像重塑为n行3列（RGB值）
+    x_coords = x_coords.reshape(-1, 1)  # 将坐标重塑为n行1列
+    y_coords = y_coords.reshape(-1, 1)
+
+    # 组合特征向量
+    features = np.hstack((pixels, x_coords, y_coords))
+    print(features.shape)
+    # print(x_coords.shape)
+    # print(y_coords.shape)
+
+    # 标准化特征
+    scaler = StandardScaler()
+    features_scaled = scaler.fit_transform(features)
+
+    return features_scaled, height, width
+
+
+def read_image(image_path):
+    # 读取图像
+    # pil_image = Image.open(image_path)
+    # print(pil_image)
+    # pil_image.show()
+    image = cv2.imread(image_path)
+
+    # cv2.imshow('image', image)
+    # print(image)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+
+    features, height, width = create_feature_vectors(image)
+    return image, features, height, width
+
+
+def image_test():
+    datas_dir = parent_dir + '/data/Berkeley Segmentation Dataset 500'
+    images_path = datas_dir + '/images'
+    trains_path = images_path + '/train'
+
+    image_path = trains_path + '/' + os.listdir(trains_path)[0]
+    print(image_path)
+    read_image(image_path)
+
+
+if __name__ == '__main__':
+    # arff_test()
+    image_test()
