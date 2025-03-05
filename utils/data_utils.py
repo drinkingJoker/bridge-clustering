@@ -130,7 +130,7 @@ def create_feature_vectors(image):
     y_coords, x_coords = np.mgrid[0:height, 0:width]
 
     # 重塑图像和坐标数组
-    pixels = image.reshape(-1, 3)  # 将图像重塑为n行3列（RGB值）
+    pixels = image.reshape(-1, 3)  # 将图像重塑为n行3列（BGR值）
     x_coords = x_coords.reshape(-1, 1)  # 将坐标重塑为n行1列
     y_coords = y_coords.reshape(-1, 1)
 
@@ -152,7 +152,7 @@ def read_image(image_path):
     # pil_image = Image.open(image_path)
     # print(pil_image)
     # pil_image.show()
-    image = cv2.imread(image_path)
+    image = cv2.imread(image_path)  # BGR
 
     # cv2.imshow('image', image)
     # print(image)

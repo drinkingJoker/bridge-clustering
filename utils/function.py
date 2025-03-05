@@ -262,10 +262,37 @@ def compute_cluster_labels(X,
     return pred_labels
 
 
-def predict_and_cluster(clf, X, k, local_indices=None, local_distances=None):
-    # clf.fit(X)
-    # pred_bridges = clf.labels_ == 1
-    # print(X)
-    pred_bridges = clf.fit_predict(X) == -1
-    return compute_cluster_labels(X, k, pred_bridges, local_indices,
-                                  local_distances), pred_bridges
+def predict_and_cluster(clf,
+                        X,
+                        k,
+                        n_clusters,
+                        local_indices=None,
+                        local_distances=None):
+    """ 进行异常点检测并执行聚类 """
+    pred_bridges = clf.fit_predict(X) == -1  # 计算哪些点是异常点（桥接点）
+
+    labels = compute_cluster_labels(X, k, pred_bridges, local_indices,
+                                    local_distances)
+
+    # 确保聚类类别数满足 n_clusters
+    if n_clusters != None:
+        unique_labels = np.unique(labels)
+        if len(unique_labels) > n_clusters:
+            print(f"当前聚类数 {len(unique_labels)} 超过目标 {n_clusters}，进行合并...")
+            labels = merge_clusters(labels, n_clusters)
+
+    return labels, pred_bridges
+
+
+def merge_clusters(labels, n_clusters):
+    """ 如果聚类类别数超过 n_clusters，则合并 """
+    unique_labels = np.unique(labels)
+    if len(unique_labels) <= n_clusters:
+        return labels
+
+    # 使用 KMeans 进行聚类合并
+    from sklearn.cluster import KMeans
+    new_labels = KMeans(n_clusters=n_clusters,
+                        random_state=42).fit_predict(labels.reshape(-1, 1))
+
+    return new_labels

@@ -138,15 +138,23 @@ from utils.function import predict_and_cluster
 
 class BridgeClustering:
 
-    def __init__(self, outlier_detection, k):
+    def __init__(self, outlier_detection, k, n_clusters=None):
+        """
+        :param outlier_detection: 用于桥接点检测的异常检测模型
+        :param k: 近邻数
+        :param n_clusters: 目标聚类数
+        """
         self.outlier_detection_ = outlier_detection
         self.k_ = k
+        self.n_clusters_ = n_clusters
 
     def fit(self, X, y=None):
+        """ 执行聚类 """
         self.labels_, self.outliers_ = predict_and_cluster(
-            self.outlier_detection_, X, self.k_)
+            self.outlier_detection_, X, self.k_, self.n_clusters_)
         return self
 
     def fit_predict(self, X, y=None):
+        """ 训练并返回聚类标签 """
         self.fit(X)
         return self.labels_
