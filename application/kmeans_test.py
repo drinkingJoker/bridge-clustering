@@ -46,22 +46,31 @@ for image_name in os.listdir(select_dir):
     features[:, 3:] /= max(h, w)  # 将坐标归一化到 [0, 1]
 
     # K-Means 聚类
-    n_clusters = 8  # 假设分割为 4 个区域
+    n_clusters = 4  # 假设分割为 4 个区域
     model = KMeans(n_clusters=n_clusters, random_state=42)
     labels = model.fit_predict(features)
-    od = kls(**args)
-    clf = BridgeClustering(od, k, n_clusters)
-    labels_ = clf.fit_predict(features)
+    # od = kls(**args)
+    # clf = BridgeClustering(od, k, n_clusters)
+    # labels_ = clf.fit_predict(features)
 
     # 生成分割结果
     # 计算每个簇的 BGR 均值
-    cluster_colors = np.array([
-        np.mean(features[labels_ == i, :3], axis=0) for i in range(n_clusters)
-    ])  # 等价于下面的取 BGR 颜色值
-    segmented_ = cluster_colors[labels_]
+    # cluster_colors_ = np.array([
+    #     np.mean(features[labels == i, :3], axis=0) for i in range(n_clusters)
+    # ])  # 等价于下面的取 BGR 颜色值
+    # print(cluster_colors_)
+    cluster_colors_ = np.random.randint(0,
+                                        255,
+                                        size=(n_clusters, 3),
+                                        dtype=np.uint8)
+    segmented_ = cluster_colors_[labels]
     segmented_ = (segmented_ * 255).astype(np.uint8)  # 反归一化
     segmented_ = segmented_.reshape(h, w, 3)  # 恢复图像形状
 
+    # cluster_colors = np.array([
+    #     np.mean(features[labels == i, :3], axis=0) for i in range(n_clusters)
+    # ])  # 等价于下面的取 BGR 颜色值
+    # print(cluster_colors)
     segmented = model.cluster_centers_[labels, :3]  # 取 BGR 颜色值
     segmented = (segmented * 255).astype(np.uint8)  # 反归一化
     segmented = segmented.reshape(h, w, 3)  # 恢复图像形状
