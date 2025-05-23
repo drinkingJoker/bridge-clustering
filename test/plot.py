@@ -68,11 +68,11 @@ if __name__ == '__main__':
         predicted_labels = clf.labels_
         outliers = clf.outliers_
 
-        bridge_fig = plot(filename, X, bridges, cluster_labels)
+        bridge_fig = plot(filename, X, bridges, predicted_labels)
         outlier_fig = plot(filename, X, outliers, predicted_labels)
 
-        bridge_savepath = f'{bridges_savepath}{filename}_bridge.png'
-        outlier_savepath = f'{outliers_savepath}{filename}_outlier.png'
+        bridge_savepath = f'{bridges_savepath}{filename}_bridge_{k}.png'
+        outlier_savepath = f'{outliers_savepath}{filename}_outlier_{k}.png'
 
         bridge_fig.savefig(bridge_savepath, **plot_config)
         outlier_fig.savefig(outlier_savepath, **plot_config)

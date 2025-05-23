@@ -173,17 +173,17 @@ if __name__ == '__main__':
         X, cluster_labels = read_dataset(dataPath)
 
         # BAC
-        # printf('BAC')
-        # od = kls(**args)
-        # clf = BridgeClustering(od, k)
-        # clf.fit(X)
-        # predicted_labels = clf.labels_
-        # outliers = clf.outliers_
+        print('BAC')
+        od = kls(**args)
+        clf = BridgeClustering(od, k)
+        clf.fit(X)
+        predicted_labels = clf.labels_
+        outliers = clf.outliers_
 
-        # if update_performance == True:
-        #     performance = compute_performance(cluster_labels, predicted_labels)
-        #     if select_performance_folder == ari_file:
-        #         UpdateARI(performance_df, filename, 'BAC', performance)
+        if update_performance == True:
+            performance = compute_performance(cluster_labels, predicted_labels)
+            if select_performance_folder == ari_file:
+                UpdateARI(performance_df, filename, 'BAC', performance)
         
         # DBSCAN: minpoints=5
         print('DBSCAN')

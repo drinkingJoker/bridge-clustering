@@ -111,6 +111,6 @@ if __name__ == '__main__':
             plt.title(titles[i])
             plt.xticks([]), plt.yticks([])
         plt.show()
-        # plt.closekk(fig)
-        # cluster_savepath = f'{clusters_savepath}{image}.png'
-        # fig.savefig(cluster_savepath, **plot_config)
+        plt.close(fig)
+        cluster_savepath = f'{clusters_savepath}{image}.png'
+        fig.savefig(cluster_savepath, **plot_config)

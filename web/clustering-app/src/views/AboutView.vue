@@ -39,7 +39,7 @@
               <p>
                 支持常见图片格式上传，提供基于聚类算法的分割、分水岭分割和GrabCut分割等多种图像分割算法，分割结果直观展示。
               </p>
-              <p style="color: red">（TODO）</p>
+              <p style="color: red"></p>
             </div>
           </el-col>
         </el-row>
